@@ -21,16 +21,20 @@ bool girar = false;
 // Constructor
 JogoDaMemoria::JogoDaMemoria()
 {
-    setWindowTitle("jogo da memória");
+    setWindowTitle("Jogo da Memória");
     label = new QLabel();
     button = new QPushButton("& Fechar", label);
     connect(button, SIGNAL(clicked()), label, SLOT(close()));
-    timer = new QTimer(this);
-    timer->setSingleShot(true);
-    connect(timer, SIGNAL(timeout()), this, SLOT(updateGL()));
+
+    // Inicializa timers
+    timerReset = new QTimer(this);
+    timerJogar = new QTimer(this);
+
+    // Inicializa jogabilidade
+    jogavel = true;
+
     inicializarCartas();
 }
-
 // Empty destructor
 JogoDaMemoria::~JogoDaMemoria() {}
 
@@ -399,17 +403,30 @@ int JogoDaMemoria::getCartaIndex(int x, int y)
     return linha * 4 + coluna;
 }
 
+void JogoDaMemoria::resetarCarta(int indiceCarta)
+{
+    cartas[indiceCarta].escolhida = false; // Marca a carta como não escolhida
+    updateGL();                            // Atualiza a interface gráfica
+}
+
 void JogoDaMemoria::mousePressEvent(QMouseEvent *event)
 {
-    if (event->button() == Qt::LeftButton && !girar)
+    if (!jogavel)
+        return; // Bloqueia interações enquanto o timer está ativo
+
+    if (contAcertos == (sizeof(cartas) / sizeof(cartas[0])) / 2)
+    {
+        exibeTexto();
+    }
+
+    if (event->button() == Qt::LeftButton)
     {
         int cartaIndex = getCartaIndex(event->x(), event->y());
 
         if (cartaIndex >= 0 && cartaIndex < 8 && !cartas[cartaIndex].escolhida)
         {
-            cartaSelecionada = cartaIndex;
-            girar = true;
             cartas[cartaIndex].escolhida = true;
+            cartaSelecionada = cartaIndex;
 
             if (cartaA == -1)
             {
@@ -418,10 +435,34 @@ void JogoDaMemoria::mousePressEvent(QMouseEvent *event)
             else
             {
                 cartaB = cartaIndex;
-                comparaCarta();
+
+                // Bloqueia jogabilidade enquanto processa as cartas
+                jogavel = false;
+
+                if (cartas[cartaA].figura != cartas[cartaB].figura)
+                {
+                    // Configura o timer para resetar cartas erradas
+                    timerReset->singleShot(1000, this, [=]()
+                                           {
+                        resetarCarta(cartaA);
+                        resetarCarta(cartaB);
+                        cartaA = -1;
+                        cartaB = -1;
+                        updateGL(); });
+                }
+                else
+                {
+                    contAcertos++;
+                    cartaA = -1;
+                    cartaB = -1;
+                }
+
+                // Configura o timer para liberar jogabilidade após o reset
+                timerJogar->singleShot(1500, this, [=]()
+                                       { jogavel = true; });
             }
 
-            updateGL();
+            updateGL(); // Atualiza a tela
         }
     }
 }

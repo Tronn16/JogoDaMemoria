@@ -48,10 +48,15 @@ protected:
     void exibeTexto();
     int getCartaIndex(int x, int y);
 
+    void resetarCarta(int indiceCarta);
+
 private:
     QTimer *timer;
     QLabel *label;
     QPushButton *button;
+    bool jogavel = true; // Controla se o jogador pode interagir
+    QTimer *timerReset;  // Timer para resetar cartas
+    QTimer *timerJogar;  // Timer para permitir jogar novamente
     // textures
     GLuint _fundoTexture, _frenteTexture, _backgroundTexture;
 };
